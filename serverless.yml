@@ -1,0 +1,23 @@
+
+service: nebula # NOTE: update this with your service name
+
+provider:
+  name: aws
+  runtime: python3.7
+  stage: dev
+  profile: flanker
+  region: us-east-1
+
+
+functions:
+  get_title:
+    handler: lambda/title.get_title
+    events:
+      - http:
+          path: lambda
+          method: post
+          cors: true
+
+plugins:
+  - serverless-offline
+  - serverless-python-requirements
