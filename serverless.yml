@@ -21,3 +21,9 @@ functions:
 plugins:
   - serverless-offline
   - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    usePipenv: true
+    zip: true
+    slim: true

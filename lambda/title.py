@@ -1,26 +1,36 @@
+try:
+  import unzip_requirements
+except ImportError:
+  pass
+
 import json
 import logging
 import requests
 import re
 import boto3
 
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
 def get_title(event, context):
 
     data = json.loads(event['body'])
+    url = data.get('url')
+    logger.info('Url received: ',url)
 
-    logging.info('Data received', data)
-    # req = requests.get(url, allow_redirects=True)
-    # html = req.text
-    # response = req.json()
+    req = requests.get(url, allow_redirects=True)
+    html = req.text
 
-    # title = re.search(("<title>(.+)?</title>", html))
-    # title = title.group(1)
+    title = re.search("<title>(.+)?</title>", html)
+    title = title.group(1)
+    logger.info('Title of webpage: ',title)
 
-    #return title
+    # Removing all non ASCII values if present
+    body = ''.join([i if ord(i) < 128 else '' for i in title])
 
     response = {
         "statusCode": 200,
-        # "body": json.dumps(body)
+        "body": json.dumps(body)
     }
 
     return response
