@@ -13,17 +13,19 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 def get_title(event, context):
-
+    print(event)
     data = json.loads(event['body'])
     url = data.get('url')
-    logger.info('Url received: ',url)
+    logger.info('Url received: ')
+    logger.info(url)
 
     req = requests.get(url, allow_redirects=True)
     html = req.text
 
     title = re.search("<title>(.+)?</title>", html)
     title = title.group(1)
-    logger.info('Title of webpage: ',title)
+    logger.info('Title of webpage: ')
+    logger.info(title)
 
     # Removing all non ASCII values if present
     body = ''.join([i if ord(i) < 128 else '' for i in title])
