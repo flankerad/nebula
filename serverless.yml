@@ -1,13 +1,24 @@
 
 service: nebula # NOTE: update this with your service name
 
+custom:
+  pythonRequirements:
+    usePipenv: true
+    zip: true
+    slim: true
+
 provider:
   name: aws
   runtime: python3.7
   stage: dev
   profile: flanker
   region: us-east-1
-
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:PutObjectAcl
+      Resource: "arn:aws:s3:::responsebody/*"
 
 functions:
   get_title:
@@ -17,13 +28,39 @@ functions:
           path: lambda
           method: post
           cors: true
+    environment:
+      BUCKET: responsebody
+
+package:
+  exclude:
+    - node_modules/**
+    - .idea/**
+    - .requirements/**
+    - env/**
+    - README.md
+    - package.json
+    - package-lock.json
+    - requirements.txt
+    - __pycache__/**
 
 plugins:
   - serverless-offline
   - serverless-python-requirements
 
-custom:
-  pythonRequirements:
-    usePipenv: true
-    zip: true
-    slim: true
+resources:
+  Resources:
+    UploadBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: responsebody
+        CorsConfiguration:
+          CorsRules:
+          - AllowedMethods:
+            - GET
+            - PUT
+            - POST
+            - HEAD
+            AllowedOrigins:
+            - "*"
+            AllowedHeaders:
+            - "*"

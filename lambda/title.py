@@ -8,6 +8,7 @@ import logging
 import requests
 import re
 import boto3
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -32,8 +33,18 @@ def get_title(event, context):
 
     response = {
         "statusCode": 200,
-        "body": json.dumps(body)
+        "body": body
     }
+
+    s3 = boto3.client('s3')
+    try:
+        s3.put_object(Bucket="responsebody", Key="resp", Body="response")
+    except ClientError as e:
+        # AllAccessDisabled error == bucket not found
+        # NoSuchKey or InvalidRequest error == (dest bucket/obj == src bucket/obj)
+        logging.error(e)
+        # return False
+
 
     return response
 
