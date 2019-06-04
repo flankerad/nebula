@@ -42,7 +42,7 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
         - dynamodb:DescribeTable
-      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/titleTable"
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/urlTable"
 
 
 functions:
@@ -51,11 +51,19 @@ functions:
     memorySize: 256
     events:
       - http:
-          path: lambda
+          path: lambda/get_title
           method: post
           cors: true
     environment:
       BUCKET: responsebody
+  store_dynamo:
+      handler: lambda/store_dynamo.store_dynamo
+      memorySize: 256
+      events:
+        - http:
+            path: lambda/store_dynamo
+            method: post
+            cors: true
 
 package:
   exclude:
@@ -92,20 +100,16 @@ resources:
             AllowedHeaders:
             - "*"
 
-    TitleTable:
+    urlTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: titleTable
+        TableName: urlTable
         AttributeDefinitions:
           - AttributeName: timeStamp
-            AttributeType: S
-          - AttributeName: title
             AttributeType: S
         KeySchema:
           - AttributeName: timeStamp
             KeyType: HASH
-          - AttributeName: title
-            KeyType: RANGE
         # Set the capacity based on the stage
         ProvisionedThroughput:
           ReadCapacityUnits: 1
