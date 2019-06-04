@@ -11,62 +11,57 @@ import boto3
 from botocore.exceptions import ClientError
 from time import time
 
+logging._srcfile = None
+logging.logThreads = 0
+logging.logThreads = 0.
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
+
 dynamodb = boto3.resource('dynamodb')
 
 def get_title(event, context):
-    print(event)
+    response = {
+        "statusCode": 200,
+        "body": None,
+        "error": None
+    }
     data = json.loads(event['body'])
     url = data.get('url')
-    logger.info('Url received: ')
-    logger.info(url)
+
+    logger.info('Url received: %s', url)
 
     req = requests.get(url, allow_redirects=True)
     html = req.text
 
     title = re.search("<title>(.+)?</title>", html)
     title = title.group(1)
-    logger.info('Title of webpage: ')
-    logger.info(title)
-
     # Removing all non ASCII values if present
-    body = ''.join([i if ord(i) < 128 else '' for i in title])
+    title = ''.join([i if ord(i) < 128 else '' for i in title])
 
-    response = {
-        "statusCode": 200,
-        "body": body
-    }
+    logger.info('Title of webpage: %s', title)
 
     s3 = boto3.client('s3')
     key =  str(int(time() * 1000))
     table = dynamodb.Table('titleTable')
 
-    try:
-        s3.put_object(Bucket="responsebody", Key=key, Body=body)
-    except ClientError as e:
-        # AllAccessDisabled error == bucket not found
-        # NoSuchKey or InvalidRequest error == (dest bucket/obj == src bucket/obj)
-        logging.error(e)
-        # return False
-        response['msg'] = 'Cannot put response to S3'
-
     item = {
         'timeStamp': key,
-        'title': body,
-        # 'checked': False,
-        # 'createdAt': timestamp,
-        # 'updatedAt': timestamp,
+        'title': title,
     }
-    table.put_item(Item=item)
+
+    try:
+        s3.put_object(Bucket="responsebody", Key=key, Body=title)
+        table.put_item(Item=item)
+        s3_url = s3.generate_presigned_url('get_object', Params={'Bucket': "responsebody", 'Key': key})
+    except ClientError as e:
+        logging.error(e)
+        response['error'] = 'AWS: ' + e.message
+        return response
+
+    body = {
+        'title': title,
+        's3_url': s3_url
+    }
+    response['body'] = json.dumps(body)
 
     return response
-
-    # Use this code if you don't use the http event with the LAMBDA-PROXY
-    # integration
-    """
-    return {
-        "message": "Go Serverless v1.0! Your function executed successfully!",
-        "event": event
-    }
-    """
