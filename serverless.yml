@@ -6,6 +6,20 @@ custom:
     usePipenv: true
     zip: true
     slim: true
+  dynamodb:
+  # If you only want to use DynamoDB Local in some stages, declare them here
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      heapInitial: 200m
+      heapMax: 1g
+      migrate: true
+      seed: true
+      convertEmptyValues: true
+    # Uncomment only if you already have a DynamoDB running locally
+    # noStart: true
 
 provider:
   name: aws
@@ -16,12 +30,25 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - "s3:*"
+      - "s3:*"
       Resource: "arn:aws:s3:::responsebody/*"
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:DescribeTable
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/titleTable"
+
 
 functions:
   get_title:
     handler: lambda/title.get_title
+    memorySize: 256
     events:
       - http:
           path: lambda
@@ -45,6 +72,7 @@ package:
 plugins:
   - serverless-offline
   - serverless-python-requirements
+  - serverless-dynamodb-local
 
 resources:
   Resources:
@@ -63,3 +91,22 @@ resources:
             - "*"
             AllowedHeaders:
             - "*"
+
+    TitleTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: titleTable
+        AttributeDefinitions:
+          - AttributeName: timeStamp
+            AttributeType: S
+          - AttributeName: title
+            AttributeType: S
+        KeySchema:
+          - AttributeName: timeStamp
+            KeyType: HASH
+          - AttributeName: title
+            KeyType: RANGE
+        # Set the capacity based on the stage
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

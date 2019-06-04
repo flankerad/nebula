@@ -13,6 +13,7 @@ from time import time
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
+dynamodb = boto3.resource('dynamodb')
 
 def get_title(event, context):
     print(event)
@@ -38,7 +39,8 @@ def get_title(event, context):
     }
 
     s3 = boto3.client('s3')
-    key = int(time())
+    key =  str(int(time() * 1000))
+    table = dynamodb.Table('titleTable')
 
     try:
         s3.put_object(Bucket="responsebody", Key=key, Body=body)
@@ -48,6 +50,15 @@ def get_title(event, context):
         logging.error(e)
         # return False
         response['msg'] = 'Cannot put response to S3'
+
+    item = {
+        'timeStamp': key,
+        'title': body,
+        # 'checked': False,
+        # 'createdAt': timestamp,
+        # 'updatedAt': timestamp,
+    }
+    table.put_item(Item=item)
 
     return response
 
