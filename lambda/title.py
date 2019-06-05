@@ -53,7 +53,7 @@ def get_title(event, context):
     table = dynamodb.Table('titleTable')
 
     item = {
-        'timestamp': key,
+        'id': key,
         'title': title,
     }
 

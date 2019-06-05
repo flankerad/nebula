@@ -2,6 +2,13 @@
 service: nebula # NOTE: update this with your service name
 
 custom:
+  app_name: nebula
+  default_stage: dev
+  default_profile: flanker
+  profile: ${opt:profile, self:custom.default_profile}
+  stage: ${opt:stage, self:custom.default_stage}
+  region: ${opt:region, 'us-east-1'}
+  stack_name: ${self:custom.app_name}-${self:custom.stage}
   pythonRequirements:
     usePipenv: true
     zip: true
@@ -24,14 +31,17 @@ custom:
 provider:
   name: aws
   runtime: python3.7
-  stage: dev
-  profile: flanker
-  region: us-east-1
+  stage: ${self:custom.stage}
+  profile: ${self:custom.profile}
+  region: ${self:custom.region}
+  environment:
+    S3_BUCKET_NAME: "${self:service}-${opt:stage, self:provider.stage}-resbody"
+    DYNAMODB_TABLE: "${self:service}-${opt:stage, self:provider.stage}-processing"
   iamRoleStatements:
     - Effect: Allow
       Action:
       - "s3:*"
-      Resource: "arn:aws:s3:::responsebody/*"
+      Resource: "arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*"
     - Effect: Allow
       Action:
         - dynamodb:DescribeTable
@@ -42,7 +52,7 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
         - dynamodb:DescribeTable
-      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/urlTable"
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
 
 
 functions:
@@ -54,8 +64,6 @@ functions:
           path: lambda/get_title
           method: post
           cors: true
-    environment:
-      BUCKET: responsebody
   store_dynamo:
       handler: lambda/store_dynamo.store_dynamo
       memorySize: 256
@@ -87,7 +95,7 @@ resources:
     UploadBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: responsebody
+        BucketName: ${self:provider.environment.S3_BUCKET_NAME}
         CorsConfiguration:
           CorsRules:
           - AllowedMethods:
@@ -100,15 +108,15 @@ resources:
             AllowedHeaders:
             - "*"
 
-    urlTable:
+    ProcessingTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: urlTable
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
         AttributeDefinitions:
-          - AttributeName: timeStamp
+          - AttributeName: id
             AttributeType: S
         KeySchema:
-          - AttributeName: timeStamp
+          - AttributeName: id
             KeyType: HASH
         # Set the capacity based on the stage
         ProvisionedThroughput:
