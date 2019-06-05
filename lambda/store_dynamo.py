@@ -11,8 +11,6 @@ import re
 import boto3
 from botocore.exceptions import ClientError
 from time import time
-import botocore.response as br
-streaming_obj = br.StreamingBody(raw_stream=None,content_length=5000)
 
 logging._srcfile = None
 logging.logThreads = 0
@@ -42,20 +40,22 @@ def store_dynamo(event, context):
         'url': url,
         'state': 'PENDING'
     }
+    logger.info('Item DynamoDb: %s', item)
     # payload for invoking title function in async
-    payload  = {"id": req_id}
+    payload  = {"req_id": req_id}
     try:
         table.put_item(Item=item)
         client = boto3.client('lambda')
-        response = client.invoke(
+        res = client.invoke(
                             FunctionName='nebula-dev-get_title',
                             InvocationType='Event',
                             Payload=json.dumps(payload)
         )
+        response['statusCode'] = 200
+        logger.info("Response from invocating async function .. %s", response)
     except ClientError as e:
         logging.error(e)
         response['error'] =  e
         return response
 
-    logger.info('Response\n', response)
     return response
