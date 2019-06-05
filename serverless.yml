@@ -74,6 +74,14 @@ functions:
             cors: true
       environment:
         FUNCTION_ASYNC: "get_title"
+  query_dynamo:
+    handler: lambda/query.query_dynamo
+    memorySize: 256
+    events:
+      - http:
+          path: lambda/query
+          method: post
+          cors: true
 
 package:
   exclude:
