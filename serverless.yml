@@ -72,6 +72,8 @@ functions:
             path: lambda/store_dynamo
             method: post
             cors: true
+      environment:
+        FUNCTION_ASYNC: "get_title"
 
 package:
   exclude:
