@@ -31,6 +31,7 @@ custom:
 provider:
   name: aws
   runtime: python3.7
+  cfLogs: true
   stage: ${self:custom.stage}
   profile: ${self:custom.profile}
   region: ${self:custom.region}
@@ -42,6 +43,7 @@ provider:
       Action:
       - "s3:*"
       Resource: "arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*"
+
     - Effect: Allow
       Action:
         - dynamodb:DescribeTable
@@ -51,19 +53,45 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-        - dynamodb:DescribeTable
       Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
 
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:DescribeStream
+        - dynamodb:ListStreams
+        - dynamodb:GetShardIterator
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:712533631256:table/${self:provider.environment.DYNAMODB_TABLE}/stream/*"
+
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:DescribeStream
+        - dynamodb:ListStreams
+        - dynamodb:GetShardIterator
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:712533631256:table/${self:provider.environment.DYNAMODB_TABLE}/stream/*"
 
 functions:
   get_title:
     handler: lambda/title.get_title
     memorySize: 256
     events:
-      - http:
-          path: lambda/get_title
-          method: post
-          cors: true
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [ ProcessingTable, StreamArn ]
+          batchSize: 1
+          startingPosition: LATEST
+          enabled: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:DescribeTable
+          - dynamodb:DescribeStream
+          - dynamodb:ListStreams
+          - dynamodb:GetShardIterator
+        Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:712533631256:table/${self:provider.environment.DYNAMODB_TABLE}/stream/*"
+
   store_dynamo:
       handler: lambda/store_dynamo.store_dynamo
       memorySize: 256
@@ -132,3 +160,5 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE

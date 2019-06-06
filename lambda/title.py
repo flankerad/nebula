@@ -24,12 +24,12 @@ dynamodb_table = os.environ['DYNAMODB_TABLE']
 
 def get_title(event, context):
     """
-    Third Version
-    - From id get url from dynamodb
-    - Extract title from the url
-    - Store the url in s3
-    - Update dynamodb with s3 url and title
-    - Update the state as processed
+        - Triggered by Dynamo Stream
+        - Get id, url from event
+        - Extract title from the url
+        - Store the url in s3
+        - Update dynamodb with s3 url and title
+        - Update the state as processed
     """
 
     response = {
@@ -37,18 +37,14 @@ def get_title(event, context):
         "body": None,
         "error": None
     }
-
-    req_id = event.get('id')
-    table = dynamodb.Table(dynamodb_table)
+    logger.info("EVENT RECORDS\n%s", event.get('Records'))
+    """
+        Since we are processing only one record at a time
+    """
+    data = event.get('Records')[0].get('dynamodb').get('NewImage')
+    req_id = data.get('id').get('S')
+    url = data.get('url').get('S')
     logger.info("Request Id\n%s", req_id)
-
-    """
-        - Get url from the dynamodb table using request id
-    """
-    get_resp = table.get_item(Key=event)
-    logger.info('Response for getting Url from DYNAMODB_TABLE\n %s', get_resp)
-    url = get_resp.get('Item').get('url')
-    logger.info('Url from dynamo: %s', url)
 
     """
         - Extract and process title from url
@@ -67,6 +63,7 @@ def get_title(event, context):
         - Insert titel & s3 url in Dynamodb
     """
     try:
+        table = dynamodb.Table(dynamodb_table)
         s3 = boto3.client('s3')
         s3.put_object(Bucket=s3_bucket, Key=req_id, Body=json.dumps(html))
         s3_url = s3.generate_presigned_url('get_object', Params={'Bucket': s3_bucket, 'Key': req_id})

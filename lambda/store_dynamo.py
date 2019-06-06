@@ -54,15 +54,15 @@ def store_dynamo(event, context):
     try:
         table = dynamodb.Table(dynamodb_table)
         table.put_item(Item=item)
-        client = boto3.client('lambda')
-        res = client.invoke(
-                            FunctionName=function_async,
-                            InvocationType='Event',
-                            Payload=json.dumps(payload)
-        )
-        response['statusCode'] = 200
-        response['body'] = "Invoked async function"
-        logger.info("Response from invocating async function .. %s", res)
+        # client = boto3.client('lambda')
+        # res = client.invoke(
+        #                     FunctionName=function_async,
+        #                     InvocationType='Event',
+        #                     Payload=json.dumps(payload)
+        # )
+        # response['statusCode'] = 200
+        # response['body'] = "Invoked async function"
+        # logger.info("Response from invocating async function .. %s", res)
     except ClientError as e:
         logging.error(e)
         response['error'] =  e
