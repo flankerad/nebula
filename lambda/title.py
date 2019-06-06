@@ -39,6 +39,12 @@ def get_title(event, context):
     }
     logger.info("EVENT RECORDS\n%s", event.get('Records'))
     """
+        Only concerned with INSERT event otherwise lambda will go into self invocation loop
+        i.e inserting in db & then reading it back with MODIFY envent
+    """
+    if event.get('Records')[0].get('eventName') == 'MODIFY':
+        return
+    """
         Since we are processing only one record at a time
     """
     data = event.get('Records')[0].get('dynamodb').get('NewImage')
